@@ -6,6 +6,7 @@ import { findSkillForMessage, SkillContext, SkillResult, SKILLS_REGISTRY } from 
 import "./conversationSkill";
 import "./weatherSkill";
 import "./calculatorSkill";
+import "./calendarSkill";
 
 export async function processMessage(
   userMessage: string,
