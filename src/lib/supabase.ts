@@ -1,11 +1,9 @@
 
 import { createClient } from '@supabase/supabase-js';
+import { supabase as supabaseClient } from '@/integrations/supabase/client';
 
-// These are public keys that can be exposed in the client
-const supabaseUrl = 'https://your-project-url.supabase.co';
-const supabaseAnonKey = 'your-anon-key';
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Use the auto-generated Supabase client from the integration
+export const supabase = supabaseClient;
 
 export type UserProfile = {
   id: string;

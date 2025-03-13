@@ -7,11 +7,14 @@ import { ChatMessage as ChatMessageType } from "@/lib/supabase";
 import { supabase } from "@/lib/supabase";
 import { v4 as uuidv4 } from "uuid";
 import { toast } from "sonner";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
 
 const Chat = () => {
   const { user } = useAuth();
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   // Fetch messages when component mounts
@@ -57,6 +60,7 @@ const Chat = () => {
         setMessages(data as ChatMessageType[]);
       }
     } catch (error: any) {
+      setError("Error fetching messages");
       toast.error("Error fetching messages: " + error.message);
     }
   };
@@ -73,8 +77,9 @@ const Chat = () => {
 
   // Handle sending a new message
   const handleSendMessage = async (content: string) => {
-    if (!user || !content.trim()) return;
+    if (!user || !content.trim() || isLoading) return;
 
+    setError(null);
     // Create user message
     const userMessage: ChatMessageType = {
       id: uuidv4(),
@@ -90,40 +95,40 @@ const Chat = () => {
     // Save to database
     await saveMessage(userMessage);
     
-    // Simulate AI response
-    simulateResponse(content);
+    // Process with OpenAI
+    processWithOpenAI(content);
   };
 
-  // Simulate AI response (replace with actual AI call)
-  const simulateResponse = async (userMessage: string) => {
+  // Process message with OpenAI
+  const processWithOpenAI = async (userMessage: string) => {
     if (!user) return;
     
     setIsLoading(true);
     
     try {
-      // Simulate network delay
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Format messages for API
+      const messageHistory = messages.map(msg => ({
+        role: msg.role,
+        content: msg.content
+      }));
       
-      // Generate a simple response
-      let responseContent = `I've received your message: "${userMessage}"`;
+      // Add the latest user message
+      messageHistory.push({
+        role: 'user',
+        content: userMessage
+      });
       
-      // Customize response based on common queries
-      if (userMessage.toLowerCase().includes("hello") || userMessage.toLowerCase().includes("hi")) {
-        responseContent = "Hello! How can I assist you today?";
-      } else if (userMessage.toLowerCase().includes("help")) {
-        responseContent = "I'm here to help! You can ask me questions, request information, or just chat. What would you like to know?";
-      } else if (userMessage.toLowerCase().includes("thank")) {
-        responseContent = "You're welcome! Is there anything else I can help you with?";
-      } else if (userMessage.toLowerCase().includes("weather")) {
-        responseContent = "I'm not connected to real-time weather data yet, but I can help you with many other topics. What else would you like to know?";
-      } else {
-        responseContent = "I understand you said: \"" + userMessage + "\". In a fully implemented version, I would provide a more contextual response based on your input.";
-      }
+      // Call our Supabase Edge Function
+      const { data, error } = await supabase.functions.invoke('chat', {
+        body: { messages: messageHistory },
+      });
+      
+      if (error) throw error;
       
       const aiMessage: ChatMessageType = {
         id: uuidv4(),
         user_id: user.id,
-        content: responseContent,
+        content: data.content,
         role: "assistant",
         created_at: new Date().toISOString(),
       };
@@ -131,6 +136,8 @@ const Chat = () => {
       setMessages((prev) => [...prev, aiMessage]);
       await saveMessage(aiMessage);
     } catch (error: any) {
+      console.error("OpenAI API error:", error);
+      setError("Failed to generate response. Please try again.");
       toast.error("Error generating response: " + error.message);
     } finally {
       setIsLoading(false);
@@ -139,6 +146,17 @@ const Chat = () => {
 
   return (
     <div className="flex flex-col h-screen pt-16">
+      {/* Error message */}
+      {error && (
+        <div className="container mx-auto max-w-4xl px-4 pt-4">
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        </div>
+      )}
+      
       {/* Chat container */}
       <div 
         ref={chatContainerRef}
