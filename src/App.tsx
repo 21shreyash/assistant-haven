@@ -13,6 +13,7 @@ const Index = lazy(() => import("./pages/Index"));
 const Login = lazy(() => import("./pages/Login"));
 const Chat = lazy(() => import("./pages/Chat"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+const SkillsRegistry = lazy(() => import("./components/SkillsRegistry"));
 
 const queryClient = new QueryClient();
 
@@ -61,6 +62,11 @@ const AppRoutes = () => (
     <Route path="/chat" element={
       <ProtectedRoute>
         <Chat />
+      </ProtectedRoute>
+    } />
+    <Route path="/skills" element={
+      <ProtectedRoute>
+        <SkillsRegistry />
       </ProtectedRoute>
     } />
     <Route path="*" element={<NotFound />} />

@@ -20,10 +20,28 @@ serve(async (req) => {
       throw new Error('OPENAI_API_KEY is not set');
     }
 
-    const { messages } = await req.json();
+    const { messages, skillMetadata } = await req.json();
 
     if (!messages || !Array.isArray(messages)) {
       throw new Error('Messages are required and must be an array');
+    }
+
+    // Customize system prompt based on skill metadata if provided
+    let systemPrompt = 'Be precise and concise.';
+    
+    if (skillMetadata) {
+      // Add skill-specific instructions to the system prompt
+      systemPrompt += ` You are specifically responding about ${skillMetadata.domain}.`;
+      
+      if (skillMetadata.constraints) {
+        systemPrompt += ` ${skillMetadata.constraints}`;
+      }
+    }
+
+    // Add system message if not already present
+    let messagePayload = [...messages];
+    if (messages.length === 0 || messages[0].role !== 'system') {
+      messagePayload = [{ role: 'system', content: systemPrompt }, ...messages];
     }
 
     // Call OpenAI API
@@ -35,7 +53,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: 'gpt-4o-mini',
-        messages: messages,
+        messages: messagePayload,
         temperature: 0.7,
       }),
     });

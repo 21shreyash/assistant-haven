@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import ChatMessage from "@/components/ChatMessage";
@@ -9,6 +8,7 @@ import { v4 as uuidv4 } from "uuid";
 import { toast } from "sonner";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
+import { processMessage } from "@/lib/skills/skillsManager";
 
 const Chat = () => {
   const { user } = useAuth();
@@ -95,40 +95,24 @@ const Chat = () => {
     // Save to database
     await saveMessage(userMessage);
     
-    // Process with OpenAI
-    processWithOpenAI(content);
+    // Process with skills system
+    processWithSkills(content);
   };
 
-  // Process message with OpenAI
-  const processWithOpenAI = async (userMessage: string) => {
+  // Process message with skills system
+  const processWithSkills = async (userMessage: string) => {
     if (!user) return;
     
     setIsLoading(true);
     
     try {
-      // Format messages for API
-      const messageHistory = messages.map(msg => ({
-        role: msg.role,
-        content: msg.content
-      }));
-      
-      // Add the latest user message
-      messageHistory.push({
-        role: 'user',
-        content: userMessage
-      });
-      
-      // Call our Supabase Edge Function
-      const { data, error } = await supabase.functions.invoke('chat', {
-        body: { messages: messageHistory },
-      });
-      
-      if (error) throw error;
+      // Process the message using our skills system
+      const result = await processMessage(userMessage, messages, user.id);
       
       const aiMessage: ChatMessageType = {
         id: uuidv4(),
         user_id: user.id,
-        content: data.content,
+        content: result.content,
         role: "assistant",
         created_at: new Date().toISOString(),
       };
@@ -136,7 +120,7 @@ const Chat = () => {
       setMessages((prev) => [...prev, aiMessage]);
       await saveMessage(aiMessage);
     } catch (error: any) {
-      console.error("OpenAI API error:", error);
+      console.error("Skills processing error:", error);
       setError("Failed to generate response. Please try again.");
       toast.error("Error generating response: " + error.message);
     } finally {
