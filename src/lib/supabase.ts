@@ -1,6 +1,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { supabase as supabaseClient } from '@/integrations/supabase/client';
+import type { Database } from '@/integrations/supabase/types';
 
 // Use the auto-generated Supabase client from the integration
 export const supabase = supabaseClient;
