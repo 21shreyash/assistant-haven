@@ -76,18 +76,22 @@ const AppRoutes = () => (
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <NavBar />
-          <Suspense fallback={
-            <div className="min-h-screen flex items-center justify-center">
-              <div className="animate-pulse-slow">Loading...</div>
-            </div>
-          }>
-            <AppRoutes />
-          </Suspense>
+          <div className="flex flex-col min-h-screen">
+            <NavBar />
+            <main className="flex-grow">
+              <Suspense fallback={
+                <div className="min-h-screen flex items-center justify-center">
+                  <div className="animate-pulse-slow">Loading...</div>
+                </div>
+              }>
+                <AppRoutes />
+              </Suspense>
+            </main>
+          </div>
+          <Toaster />
+          <Sonner />
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
