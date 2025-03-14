@@ -25,22 +25,42 @@ const CalendarSkill: Skill = {
     const hasTimePattern = /\b(\d{1,2})(:\d{2})?\s*(am|pm|o'clock)\b/i.test(message) ||
                           /\b(morning|afternoon|evening|night)\b/i.test(message);
     
-    return hasCalendarIntent && hasTimePattern;
+    const canHandle = hasCalendarIntent && hasTimePattern;
+    
+    // Add debug logging
+    console.log(`CalendarSkill.canHandle() - Message: "${message}"`);
+    console.log(`CalendarSkill.canHandle() - Result: ${canHandle} (hasCalendarIntent: ${hasCalendarIntent}, hasTimePattern: ${hasTimePattern})`);
+    
+    return canHandle;
   },
   
   execute: async (message: string, context: SkillContext): Promise<SkillResult> => {
+    console.log(`CalendarSkill.execute() - Starting execution for message: "${message}"`);
+    
     try {
       // First, check if user is connected to Google Calendar
+      console.log("CalendarSkill - Checking connection status");
       const { data: statusData, error: statusError } = await supabase.functions.invoke('calendar/status');
       
-      if (statusError) throw new Error(statusError.message);
+      if (statusError) {
+        console.error("CalendarSkill - Status check error:", statusError);
+        throw new Error(statusError.message);
+      }
+      
+      console.log("CalendarSkill - Connection status:", statusData);
       
       // If not connected, guide the user to connect
       if (!statusData.connected) {
+        console.log("CalendarSkill - User not connected, getting auth URL");
         // Get auth URL
         const { data: authData, error: authError } = await supabase.functions.invoke('calendar/auth');
         
-        if (authError) throw new Error(authError.message);
+        if (authError) {
+          console.error("CalendarSkill - Auth URL error:", authError);
+          throw new Error(authError.message);
+        }
+        
+        console.log("CalendarSkill - Returning auth prompt with URL:", authData.url);
         
         return {
           content: `I'd like to add this event to your calendar, but you need to connect to Google Calendar first. [Click here to connect](${authData.url})`,
@@ -54,14 +74,21 @@ const CalendarSkill: Skill = {
       }
       
       // User is connected, try to add the event
+      console.log("CalendarSkill - User connected, adding event");
       const { data, error } = await supabase.functions.invoke('calendar/addevent', {
         body: { message }
       });
       
       if (error) {
+        console.error("CalendarSkill - Add event error:", error);
+        
         // Check if we need authentication
         if (error.message.includes('authentication') || (data && data.requiresAuth)) {
+          console.log("CalendarSkill - Auth required, getting auth URL");
           const { data: authData } = await supabase.functions.invoke('calendar/auth');
+          
+          console.log("CalendarSkill - Returning reconnect prompt with URL:", authData.url);
+          
           return {
             content: `I need to reconnect to your Google Calendar. [Click here to reconnect](${authData.url})`,
             role: 'assistant',
@@ -76,6 +103,8 @@ const CalendarSkill: Skill = {
       }
       
       // Event added successfully
+      console.log("CalendarSkill - Event added successfully:", data);
+      
       return {
         content: `I've added the event "${data.event.title}" to your calendar${data.event.date ? ` on ${data.event.date}` : ""}${data.event.time ? ` at ${data.event.time}` : ""}. [View in Google Calendar](${data.event.htmlLink})`,
         role: 'assistant',

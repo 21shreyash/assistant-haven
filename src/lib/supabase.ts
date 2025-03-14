@@ -1,9 +1,9 @@
+
 import { createClient } from '@supabase/supabase-js'
+import { supabase as supabaseClient } from '@/integrations/supabase/client'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Use the client imported from integrations instead of creating a new one
+export const supabase = supabaseClient
 
 export interface ChatMessage {
   id: string;
