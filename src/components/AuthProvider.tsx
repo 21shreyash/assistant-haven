@@ -74,15 +74,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signInWithGoogle = async () => {
     try {
       setLoading(true);
+      console.log('Signing in with Google...');
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin + '/chat',
+          redirectTo: `${window.location.origin}/chat`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          }
         },
       });
       if (error) throw error;
-      // Note: No success toast here as the user will be redirected to Google
+      // No success toast here as user will be redirected to Google
     } catch (error: any) {
+      console.error('Google sign-in error:', error);
       toast.error(error.message || 'Error signing in with Google');
       setLoading(false);
     }
