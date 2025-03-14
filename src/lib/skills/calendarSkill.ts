@@ -17,7 +17,7 @@ const CalendarSkill: Skill = {
     /next\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)/i
   ],
   
-  canHandle: (message: string) => {
+  canHandle: (message: string, context: SkillContext) => {
     // Check if the message contains calendar-related keywords
     const hasCalendarIntent = CalendarSkill.patterns.some(pattern => pattern.test(message));
     
@@ -29,7 +29,9 @@ const CalendarSkill: Skill = {
     
     // Add debug logging
     console.log(`CalendarSkill.canHandle() - Message: "${message}"`);
-    console.log(`CalendarSkill.canHandle() - Result: ${canHandle} (hasCalendarIntent: ${hasCalendarIntent}, hasTimePattern: ${hasTimePattern})`);
+    console.log(`CalendarSkill.canHandle() - hasCalendarIntent: ${hasCalendarIntent}`);
+    console.log(`CalendarSkill.canHandle() - hasTimePattern: ${hasTimePattern}`);
+    console.log(`CalendarSkill.canHandle() - Final result: ${canHandle}`);
     
     return canHandle;
   },
@@ -44,7 +46,7 @@ const CalendarSkill: Skill = {
       
       if (statusError) {
         console.error("CalendarSkill - Status check error:", statusError);
-        throw new Error(statusError.message);
+        throw new Error(`Calendar status check failed: ${statusError.message}`);
       }
       
       console.log("CalendarSkill - Connection status:", statusData);
@@ -57,7 +59,7 @@ const CalendarSkill: Skill = {
         
         if (authError) {
           console.error("CalendarSkill - Auth URL error:", authError);
-          throw new Error(authError.message);
+          throw new Error(`Failed to get auth URL: ${authError.message}`);
         }
         
         console.log("CalendarSkill - Returning auth prompt with URL:", authData.url);
@@ -81,11 +83,17 @@ const CalendarSkill: Skill = {
       
       if (error) {
         console.error("CalendarSkill - Add event error:", error);
+        console.error("Error details:", error.message, error.stack);
         
         // Check if we need authentication
         if (error.message.includes('authentication') || (data && data.requiresAuth)) {
           console.log("CalendarSkill - Auth required, getting auth URL");
-          const { data: authData } = await supabase.functions.invoke('calendar/auth');
+          const { data: authData, error: authError } = await supabase.functions.invoke('calendar/auth');
+          
+          if (authError) {
+            console.error("CalendarSkill - Auth URL error during reconnect:", authError);
+            throw new Error(`Failed to get auth URL for reconnection: ${authError.message}`);
+          }
           
           console.log("CalendarSkill - Returning reconnect prompt with URL:", authData.url);
           
@@ -99,7 +107,7 @@ const CalendarSkill: Skill = {
             }
           };
         }
-        throw new Error(error.message);
+        throw new Error(`Calendar event creation failed: ${error.message}`);
       }
       
       // Event added successfully
@@ -117,7 +125,11 @@ const CalendarSkill: Skill = {
       console.error("Calendar skill error:", error);
       return {
         content: `I had trouble adding that to your calendar: ${error.message}. Please try again with more specific details like "Schedule a meeting with John tomorrow at 3pm."`,
-        role: 'assistant'
+        role: 'assistant',
+        metadata: {
+          skillId: CalendarSkill.id,
+          error: error.message
+        }
       };
     }
   }

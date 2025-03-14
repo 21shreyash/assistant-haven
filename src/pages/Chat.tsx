@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import ChatMessage from "@/components/ChatMessage";
@@ -7,14 +8,16 @@ import { supabase } from "@/lib/supabase";
 import { v4 as uuidv4 } from "uuid";
 import { toast } from "sonner";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Info } from "lucide-react";
 import { processMessage } from "@/lib/skills/skillsManager";
+import { Badge } from "@/components/ui/badge";
 
 const Chat = () => {
   const { user } = useAuth();
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<string | null>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   // Fetch messages when component mounts
@@ -29,7 +32,7 @@ const Chat = () => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, debugInfo]);
 
   // Fetch messages from Supabase
   const fetchMessages = async () => {
@@ -80,6 +83,8 @@ const Chat = () => {
     if (!user || !content.trim() || isLoading) return;
 
     setError(null);
+    setDebugInfo(null);
+    
     // Create user message
     const userMessage: ChatMessageType = {
       id: uuidv4(),
@@ -107,6 +112,7 @@ const Chat = () => {
     
     try {
       // Process the message using our skills system
+      console.log(`Processing message: "${userMessage}"`);
       const result = await processMessage(userMessage, messages, user.id);
       
       const aiMessage: ChatMessageType = {
@@ -117,6 +123,13 @@ const Chat = () => {
         created_at: new Date().toISOString(),
       };
       
+      // Show debug info if skill metadata is present
+      if (result.metadata) {
+        const skillId = result.metadata.skillId || "unknown";
+        setDebugInfo(`Processed with skill: ${skillId}`);
+        console.log(`Message processed with skill: ${skillId}`, result.metadata);
+      }
+      
       setMessages((prev) => [...prev, aiMessage]);
       await saveMessage(aiMessage);
     } catch (error: any) {
@@ -126,6 +139,12 @@ const Chat = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Toggle debug info
+  const toggleDebugMode = () => {
+    const newState = !debugInfo;
+    setDebugInfo(newState ? "Debug mode enabled" : null);
   };
 
   return (
@@ -141,12 +160,39 @@ const Chat = () => {
         </div>
       )}
       
+      {/* Debug info */}
+      {debugInfo && (
+        <div className="container mx-auto max-w-4xl px-4 pt-2">
+          <Alert variant="default" className="bg-blue-50 text-blue-800 border-blue-200">
+            <Info className="h-4 w-4" />
+            <AlertTitle>Debug Info</AlertTitle>
+            <AlertDescription className="flex items-center gap-2">
+              {debugInfo}
+              {messages.length > 0 && messages[messages.length - 1].role === 'assistant' && 
+                messages[messages.length - 1].content.includes('Click here to connect') && (
+                <Badge className="bg-amber-500">Requires Calendar Auth</Badge>
+              )}
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
+      
       {/* Chat container */}
       <div 
         ref={chatContainerRef}
         className="flex-1 overflow-y-auto px-4 py-6"
       >
         <div className="container mx-auto max-w-4xl">
+          <div className="flex justify-end mb-4">
+            <Badge 
+              variant="outline" 
+              className="cursor-pointer hover:bg-muted" 
+              onClick={toggleDebugMode}
+            >
+              {debugInfo ? "Hide Debug" : "Show Debug"}
+            </Badge>
+          </div>
+          
           {messages.map((message, index) => (
             <ChatMessage 
               key={message.id} 
