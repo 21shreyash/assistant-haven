@@ -26,8 +26,11 @@ serve(async (req) => {
       throw new Error('Messages are required and must be an array');
     }
 
+    // Ensure we're focusing on the latest message in context
+    console.log(`Processing ${messages.length} messages. Latest: "${messages[messages.length - 1]?.content || 'none'}"`);
+
     // Customize system prompt based on skill metadata if provided
-    let systemPrompt = 'Be precise and concise.';
+    let systemPrompt = 'Be precise and concise. Always respond to the most recent user message.';
     
     if (skillMetadata) {
       // Add skill-specific instructions to the system prompt

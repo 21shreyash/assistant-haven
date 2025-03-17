@@ -18,9 +18,17 @@ const ConversationSkill: Skill = {
         content: msg.content
       }));
       
+      // Add the current message to ensure it's included in the API call
+      const currentUserMessage = {
+        role: 'user',
+        content: message
+      };
+      
       // Call the Supabase Edge Function
       const { data, error } = await supabase.functions.invoke('chat', {
-        body: { messages: messageHistory },
+        body: { 
+          messages: [...messageHistory, currentUserMessage],
+        },
       });
       
       if (error) throw error;

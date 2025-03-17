@@ -20,7 +20,7 @@ export async function processMessage(
 
   console.log(`Processing message: "${userMessage}"`);
   
-  // Find the appropriate skill
+  // Find the appropriate skill for the current message
   const skill = findSkillForMessage(userMessage, context);
   
   if (!skill) {
@@ -32,7 +32,7 @@ export async function processMessage(
     return await conversationSkill.execute(userMessage, context);
   }
   
-  // Execute the selected skill
+  // Execute the selected skill with focus on the current message
   console.log(`Using skill: ${skill.name} (${skill.id})`);
   
   try {
