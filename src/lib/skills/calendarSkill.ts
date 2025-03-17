@@ -40,7 +40,7 @@ const CalendarSkill: Skill = {
     console.log(`CalendarSkill.execute() - Starting execution for message: "${message}"`);
     
     try {
-      // First, check if user is connected to Google Calendar
+      // Check if user is logged in with Google (this is a server-side check)
       console.log("CalendarSkill - Checking connection status");
       const { data: statusData, error: statusError } = await supabase.functions.invoke('calendar/status');
       
@@ -64,8 +64,18 @@ const CalendarSkill: Skill = {
         
         console.log("CalendarSkill - Returning auth prompt with URL:", authData.url);
         
+        // Check if the user is authenticated with Google but missing calendar scope
+        const { data: userData } = await supabase.auth.getUser();
+        const isGoogleUser = userData?.user?.app_metadata?.provider === 'google';
+        
+        let content = `I'd like to add this event to your calendar, but you need to connect to Google Calendar first. [Click here to connect](${authData.url})`;
+        
+        if (isGoogleUser) {
+          content = `I need additional permissions to access your Google Calendar. [Click here to grant calendar access](${authData.url})`;
+        }
+        
         return {
-          content: `I'd like to add this event to your calendar, but you need to connect to Google Calendar first. [Click here to connect](${authData.url})`,
+          content,
           role: 'assistant',
           metadata: {
             skillId: CalendarSkill.id,

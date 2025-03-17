@@ -2,7 +2,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 
 type AuthContextType = {
@@ -12,7 +12,8 @@ type AuthContextType = {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
+  signInWithGoogle: (withCalendarScope?: boolean) => Promise<void>;
+  isAuthenticatedWithGoogle: boolean;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -21,13 +22,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAuthenticatedWithGoogle, setIsAuthenticatedWithGoogle] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     // Check active session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user || null);
+      
+      // Check if user is authenticated with Google
+      if (session?.user?.app_metadata?.provider === 'google') {
+        setIsAuthenticatedWithGoogle(true);
+      }
+      
       setLoading(false);
     });
 
@@ -35,11 +44,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user || null);
+      
+      // Check if user is authenticated with Google
+      if (session?.user?.app_metadata?.provider === 'google') {
+        setIsAuthenticatedWithGoogle(true);
+      } else {
+        setIsAuthenticatedWithGoogle(false);
+      }
+      
       setLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Check for calendar_connected parameter in URL
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const calendarConnected = params.get('calendar_connected');
+    
+    if (calendarConnected === 'success') {
+      toast.success('Google Calendar connected successfully!');
+      
+      // Remove the query parameter
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location, navigate]);
 
   // Sign in with email and password
   const signIn = async (email: string, password: string) => {
@@ -71,10 +101,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Sign in with Google
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = async (withCalendarScope: boolean = true) => {
     try {
       setLoading(true);
-      console.log('Signing in with Google...');
+      console.log('Signing in with Google...', withCalendarScope ? 'with calendar scope' : 'without calendar scope');
+      
+      const scopes = withCalendarScope 
+        ? ['https://www.googleapis.com/auth/calendar'] 
+        : [];
+      
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -82,9 +117,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
+            ...(withCalendarScope && { scope: scopes.join(' ') })
           }
         },
       });
+      
       if (error) throw error;
       // No success toast here as user will be redirected to Google
     } catch (error: any) {
@@ -110,7 +147,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signIn, signUp, signOut, signInWithGoogle }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      session, 
+      loading, 
+      signIn, 
+      signUp, 
+      signOut, 
+      signInWithGoogle,
+      isAuthenticatedWithGoogle
+    }}>
       {children}
     </AuthContext.Provider>
   );
