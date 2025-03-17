@@ -85,7 +85,7 @@ const Login = () => {
               type="button" 
               variant="default" 
               className="w-full mb-4 bg-white text-gray-800 border border-gray-300 hover:bg-gray-100"
-              onClick={() => signInWithGoogle(true)}
+              onClick={() => signInWithGoogle(false)}
               disabled={loading}
             >
               <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24">

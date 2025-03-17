@@ -101,25 +101,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Sign in with Google
-  const signInWithGoogle = async (withCalendarScope: boolean = true) => {
+  const signInWithGoogle = async (withCalendarScope: boolean = false) => {
     try {
       setLoading(true);
       console.log('Signing in with Google...', withCalendarScope ? 'with calendar scope' : 'without calendar scope');
       
-      const scopes = withCalendarScope 
-        ? ['https://www.googleapis.com/auth/calendar'] 
-        : [];
+      // For most reliable auth flow, we'll use basic Google sign-in first
+      // and only request calendar permissions if explicitly needed
+      let options = {
+        redirectTo: `${window.location.origin}/chat`,
+      };
       
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/chat`,
+      // Only add calendar scope if explicitly requested
+      if (withCalendarScope) {
+        options = {
+          ...options,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
-            ...(withCalendarScope && { scope: scopes.join(' ') })
+            scope: 'https://www.googleapis.com/auth/calendar'
           }
-        },
+        };
+      }
+      
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: options,
       });
       
       if (error) throw error;

@@ -56,7 +56,7 @@ const Chat = () => {
                 <Button 
                   className="mt-2 bg-white text-blue-600 hover:bg-blue-100 border border-blue-300"
                   size="sm"
-                  onClick={() => signInWithGoogle(true)}
+                  onClick={() => signInWithGoogle(false)}
                 >
                   Connect Google Account
                 </Button>
