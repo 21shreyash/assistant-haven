@@ -106,14 +106,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(true);
       console.log('Signing in with Google...', withCalendarScope ? 'with calendar scope' : 'without calendar scope');
       
-      // For basic Google sign-in without calendar scope
-      const options = {
-        redirectTo: `${window.location.origin}/chat`,
-      };
-      
-      // Use scopes option directly if calendar scope is requested
-      // This is the proper way to specify scopes according to the Supabase types
       if (withCalendarScope) {
+        // With calendar scope
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
@@ -121,15 +115,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             scopes: 'https://www.googleapis.com/auth/calendar',
           },
         });
-        
         if (error) throw error;
       } else {
         // Basic Google sign-in without calendar scope
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
-          options,
+          options: {
+            redirectTo: `${window.location.origin}/chat`,
+          },
         });
-        
         if (error) throw error;
       }
       
